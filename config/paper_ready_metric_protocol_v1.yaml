@@ -1,0 +1,72 @@
+protocol: paper_ready_metric_protocol_v1
+frozen_at: 2026-09-14T21:15:00+08:00
+status: frozen
+scope: offline_postprocessing_only
+acceptance_protocol: paper_ready_acceptance_v2
+numeric_acceptance_gates_changed: false
+
+trajectory:
+  hilti22_sparse_survey:
+    metric_family: sparse_survey_translation
+    query_timestamps: observed_survey_timestamps_only
+    truth_interpolation: prohibited
+    estimate_interpolation: linear_position
+    maximum_estimate_interpolation_gap_sec: 0.20
+    alignment: rigid_se3_no_scale
+    ate: [rmse, mean, median, p95, maximum, endpoint]
+    rpe_translation: adjacent_supported_survey_observations
+    rotation_metrics: unavailable
+  ntu_viral_leica:
+    metric_family: position_with_prism_lever_arm
+    body_to_prism_m: [-0.293656, -0.012288, -0.273095]
+    truth_interpolation: linear_position
+    maximum_truth_interpolation_gap_sec: 0.10
+    alignment: rigid_se3_no_scale
+    ate: [rmse, mean, median, p95, maximum, endpoint]
+    rpe_translation_delta_sec: 1.0
+    rotation_metrics: unavailable
+  dense_6dof:
+    maximum_truth_interpolation_gap_sec: 0.20
+    alignment: rigid_se3_no_scale
+    rpe_delta_sec: 1.0
+    metrics: [translation_ate, rotation_ate, translation_rpe, rotation_rpe]
+
+map:
+  input: all_downsampled_points.pcd
+  alignment: prohibited_for_primary_metric
+  distance: bidirectional_nearest_neighbor
+  threshold_m: 0.10
+  candidate_to_clean: [rmse, p95]
+  clean_to_candidate: [rmse, p95]
+  extra_pollution_points: candidate_points_with_clean_distance_greater_than_threshold
+  coverage_within_10cm: clean_points_with_candidate_distance_at_most_threshold_fraction
+  pollution_reduction_fraction: (polluted_extra_points-active_extra_points)/polluted_extra_points
+
+detection:
+  official_delay: first_recovery_proposal_at_or_after_fault_start_minus_fault_start
+  pre_fault_proposals: reported_separately
+  clean_proposals: reported_as_false_proposals
+  onset_lower_bound_coverage: onset_lower_bound_le_fault_start_le_detection
+
+safety:
+  metrics:
+    - final_generation
+    - rejection_reasons
+    - canonical_monotonicity
+    - candidate_leakage_on_rejection
+    - post_switch_dwell
+
+resources:
+  process_peak_increment: (candidate_peak_hwm-incumbent_peak_hwm)/incumbent_peak_hwm
+  checkpoint_wall_sec: checkpoint_total_copy_wall_sec
+  dirty_voxel_count: delta_peak_dirty_count
+  replay_wall_sec: replay_total_wall_sec
+  catchup_rate: replay_sensor_span_sec/replay_total_wall_sec
+  memory_units: KiB
+
+artifact_policy:
+  raw_run_directories_modified: false
+  derived_output_directory: evaluation_v1
+  maps_and_trajectories_use_same_repeat_clean_reference: true
+  partial_matrix_evaluation_allowed: true
+  final_acceptance_requires_80_trials: true

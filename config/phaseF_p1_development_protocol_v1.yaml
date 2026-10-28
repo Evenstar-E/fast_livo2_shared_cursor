@@ -1,0 +1,124 @@
+protocol: phaseF_p1_development_protocol_v1
+created_at: 2026-09-16T00:00:00+08:00
+status: candidate_frozen_gate_passed
+scope: onset_detector_calibration_only
+heldout_policy: >-
+  Exp04, Exp07, NTU eee_03 and NTU rtp_03 are excluded from threshold
+  selection. They may be evaluated once, only after this protocol is frozen.
+
+detector_output_contract:
+  point_estimate: point_onset_sec
+  interval: [onset_lower_bound_sec, onset_upper_bound_sec]
+  confidence: onset_confidence
+  confidence_semantics: >-
+    Bounded evidence-strength score in [0,1], not a calibrated frequentist
+    coverage probability.
+  evidence: [residual_score, match_score, innovation_score, fused_score]
+  episode_identity: [episode_id, proposal_index_in_episode]
+  duplicate_rule: >-
+    A proposal within 12 seconds of the previous overlapping degradation
+    envelope retains the episode id and sets merged_with_previous_proposal.
+
+candidate_detector_family:
+  name: causal_two_timescale_robust_shift
+  inputs: [residual_history, match_quality_history, innovation_history]
+  reference_and_current_windows_are_disjoint: true
+  time_parameterization: seconds
+  detection_rule: persistent_multi_signal_fusion
+  residual_anchor_rule: threshold is calibrated on development data and then frozen
+  signal_support_threshold_is_calibrated: true
+  innovation_rule: two-sided robust deviation; both excess and collapse are evidence
+  onset_rule: midpoint_of_first_anomalous_current_window
+  interval_rule: full_first_anomalous_current_window
+  tuning_source: development_sequences_only
+  invalid_run_policy: exclude_and_record; never tune from run.invalid
+
+development_sequences:
+  - sequence: exp14_basement_2
+    duration_sec: 74
+    nominal_fault_window_sec: [30, 36]
+  - sequence: exp16_attic_to_upper_gallery_2
+    duration_sec: 201
+    nominal_fault_window_sec: [80, 90]
+  - sequence: exp18_corridor_lower_gallery_2
+    duration_sec: 110
+    nominal_fault_window_sec: [35, 42]
+
+calibration_matrix:
+  smoke: [exp14_clean, exp14_mixed]
+  first_pass_per_sequence:
+    conditions: [clean, range_scale_drift, rigid_ghost, mixed]
+    repeats: 1
+  frozen_confirmation:
+    fault_repeats_per_sequence_and_mode: 3
+    clean_repeats_per_sequence: 3
+    fault_modes: [range_scale_drift, rigid_ghost, mixed]
+    vary_across_repeats: [fault_start, fault_duration, injection_severity, seed]
+
+runtime:
+  rolling_checkpoint_period_sec: 2.0
+  rolling_history_horizon_sec: 20.0
+  recovery_horizon_sec_after_fault_end: 10.0
+  rosbag_rate: 0.5
+  pcd_save: false
+  map_sliding: true
+
+run_eligibility:
+  required_detector_coverage_sec: fault_end_plus_10
+  prefault_health_window_sec: 10.0
+  maximum_prefault_residual_median: 0.020
+  minimum_prefault_match_median: 0.50
+  maximum_prefault_innovation_median: 10.0
+  rationale: >-
+    A run that has already diverged before injected onset cannot establish
+    onset ground truth; it is recorded as estimator instability and rerun,
+    never counted as a detector hit or miss.
+
+exit_gates:
+  minimum_effective_detection_rate: 0.80
+  effective_detection_classes: [in_fault, bounded_post_fault]
+  maximum_clean_candidate_commits: 0
+  calibration_surrogate_maximum_clean_proposals: 0
+  maximum_pre_fault_alert_rate_increase: 0.0
+  maximum_median_absolute_point_onset_error_sec: 2.0
+  require_interval_and_confidence_for_every_proposal: true
+  require_duplicate_episode_merge_consistency: true
+
+frozen_candidate:
+  reference_window_sec: 6.0
+  reference_gap_sec: 0.0
+  current_window_sec: 4.0
+  minimum_anomaly_duration_sec: 2.0
+  residual_mad_multiplier: 1.5
+  match_mad_multiplier: 1.5
+  innovation_mad_multiplier: 1.5
+  strong_fused_score: 0.10
+  signal_support_score: 0.10
+  minimum_residual_anchor_score: 0.05
+  dominant_signal_score: 3.5
+  innovation_two_sided: true
+  episode_merge_gap_sec: 12.0
+  selection_scope: development_only
+  heldout_evaluated: true
+
+development_gate_result:
+  effective_detections: 9
+  fault_runs: 9
+  effective_detection_rate: 1.0
+  clean_transactional_runs: 3
+  clean_candidate_commits: 0
+  median_absolute_point_onset_error_sec: 0.7231593132019043
+  checkpoint_period_sec: 2.0
+  passed: true
+
+heldout_gate_result:
+  protocol: phaseF_p1_heldout_protocol_v1
+  result: results/p1_heldout_20260916/p1_heldout_acceptance.json
+  run_count: 16
+  fault_runs: 12
+  clean_runs: 4
+  effective_detection_rate: 1.0
+  clean_candidate_commits: 0
+  median_absolute_point_onset_error_sec: 0.7789500000000054
+  checkpoint_period_sec: 2.0
+  passed: true

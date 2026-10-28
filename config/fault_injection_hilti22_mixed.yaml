@@ -1,0 +1,23 @@
+# Deterministic geometry contamination preset for Hilti-Oxford 2022.
+# Times are relative to the first /hesai/pandar scan and intentionally match the
+# mapper transaction oracle window.
+mode: "mixed"
+start_sec: 30.0
+end_sec: 36.0
+seed: 20260909
+
+# A smoothly increasing range bias bends persistent surfaces instead of merely
+# withholding data. At the end of the window, ranges are four percent too long.
+range_scale_start: 1.0
+range_scale_end: 1.04
+
+# A deterministic subset is additionally moved into a coherent ghost surface.
+ghost_fraction: 0.35
+ghost_yaw_deg: 2.0
+ghost_translation_x: 0.20
+ghost_translation_y: 0.00
+ghost_translation_z: 0.00
+
+# Scale per-point timestamps around the first point in each scan. Keep this at
+# 1.0 for the primary geometry-only experiment; use >1 for a deskew ablation.
+point_time_scale: 1.0

@@ -1,0 +1,42 @@
+protocol: stage7d_covariance_confirmation_v1
+date: 2026-09-13
+development_sequences: [exp14_basement_2, exp18_corridor_lower_gallery_2]
+held_out_sequences: [exp16_attic_to_upper_gallery_2]
+
+candidate_confirmation:
+  maximum_position_variance_ratio: 3.0
+  maximum_rotation_variance_ratio: 2.2
+  minimum_map_coverage_ratio: 1.0
+  minimum_map_support_ratio: 0.75
+  probation_duration_sec: 20.0
+  minimum_post_catchup_duration_sec: 2.0
+  minimum_post_catchup_samples: 20
+
+calibration_rule:
+  description: >-
+    Thresholds cover all accepted Exp18 development trials with margin. Rejected
+    Exp14 trials remain failures and are excluded from accepted-candidate
+    quantiles. Held-out values cannot change these thresholds.
+  attempted_development_trials: 13
+  accepted_development_trials: 11
+  calibration_trials: 3
+  frozen_confirmation_trials: 10
+  accepted_frozen_confirmation_trials: 8
+  required_accepted_before_paper_claim: 10
+  independent_confirmation_note: >-
+    The first three accepted trials were used to select the covariance limits
+    and are not independent confirmation trials. The subsequent frozen trials
+    must be reported separately.
+
+status:
+  threshold_state: frozen_not_confirmed
+  exp18_all_development: candidate_11_of_13
+  exp18_frozen_confirmation: candidate_8_of_10
+  exp18_frozen_rejection_r4: rotation_uncertainty_ratio_2.60334_above_2.2
+  exp18_frozen_rejection_r9_corrected: rotation_uncertainty_ratio_2.26996_above_2.2
+  exp18_original_r9: excluded_boundary_threshold_wiring_mismatch_and_replaced
+  exp14_default: mapper_healthy_tail_rejected
+  exp14_support_060_ablation: mapper_healthy_tail_rejected
+  exp16_held_out_rate_1x: inconclusive_candidate_not_caught_up
+  exp16_held_out_rate_0_5x: boundary_position_rejected_1.38502_m_above_1.0_m
+  paper_ready: false

@@ -1,0 +1,97 @@
+protocol: paper_ready_acceptance_v3
+status: approved_development_amendment_not_heldout_frozen
+created_at: 2026-09-17
+amends: paper_ready_acceptance_v2
+base_file: paper_ready_acceptance_v2.yaml
+base_sha256: 5c7d13479aa4fbab169e752a45411c3abea397a87b18348b37475595497f0ee8
+authorization: >-
+  User approved separating the 50 percent memory target, allowing bounded
+  internal clean replay, and replacing mandatory large ATE improvement with
+  map-primary efficacy plus trajectory non-deterioration and a small ATE target.
+scope: >-
+  Prospective development amendment. Preserve v1/v2 protocols and all failed
+  results. Never pool populations or relabel inspected sequences as unseen.
+  No runtime selector, covariance, replay-equivalence or GT rule is relaxed.
+
+# All other v2 requirements survive. These are the ONLY superseded fields.
+supersedes:
+  - engineering_hard_gates.candidate_peak_increment_over_incumbent_maximum_fraction
+  - scientific_hard_gates.median_ate_improvement_fraction_minimum
+  - scientific_hard_gates.paired_bootstrap_improvement_interval_must_exclude_zero
+  - scientific_hard_gates.accepted_candidate_quality_improvement_fraction_minimum
+
+resource_policy:
+  candidate_increment_fraction_reporting_target: 0.50
+  target_is_paper_hard_gate: false
+  metric: (candidate_peak_hwm-incumbent_peak_hwm)/incumbent_peak_hwm
+  metric_is_total_system_overhead: false
+  absolute_budget_metric: simultaneous_process_tree_peak_pss_kib
+  absolute_peak_pss_limit_kib: null
+  missing_absolute_budget_blocks_resource_acceptance: true
+  oom_count_maximum: 0
+  crash_count_maximum: 0
+  required_measurements:
+    - incumbent_peak_hwm_kib
+    - candidate_peak_hwm_kib
+    - simultaneous_process_tree_peak_pss_kib
+    - replay_wall_sec
+    - physical_replays
+  calibration_rule: >-
+    Set the absolute budget from the declared execution host and reserve BEFORE
+    the next acceptance batch; do not choose it to fit an observed peak. Keep
+    bounded history/checkpoints and record total process-tree memory, not a sum
+    of unrelated branch maxima. Missing measurement is not zero.
+
+clean_replay_policy:
+  raw_proposals_allowed: true
+  raw_proposals_must_be_reported: true
+  internal_replay_allowed: true
+  maximum_attempts_per_merged_episode: 1
+  maximum_nonrefunded_attempts_per_sequence: 4
+  maximum_completed_rejection_refunds_per_sequence: 4
+  maximum_physical_replays_per_sequence: 8
+  source_of_count_limits: phaseF_p2_commit_protocol_v1.yaml
+  maximum_total_replay_wall_sec_per_sequence: null
+  missing_wall_budget_blocks_clean_replay_acceptance: true
+  clean_public_switch_count_maximum: 0
+  count_public_switches_from_all_transitions_not_final_generation: true
+  candidate_leakage_count_maximum: 0
+  incumbent_mutation_count_maximum: 0
+  exhausted_budget_action: suppress_new_replay_keep_incumbent
+  oracle_replay_is_not_online_admission_evidence: true
+
+effectiveness_policy:
+  population: all_predeclared_fault_trials_including_rejected_and_missed
+  primary: active_map_pollution_reduction_with_coverage_guard
+  median_extra_pollution_reduction_fraction_minimum: 0.30
+  map_paired_bootstrap_confidence: 0.95
+  map_paired_bootstrap_lower_bound_must_exceed: 0.0
+  bootstrap_draws: 10000
+  bootstrap_seed: 20260909
+  bootstrap_unit: paired_trial_fixed_sequence_suite_not_unseen_sequence_inference
+  clean_to_active_coverage_loss_fraction_maximum: 0.10
+  fault_candidate_acceptance_fraction_minimum: 0.50
+  accepted_map_improvement_and_trajectory_noninferiority_fraction_minimum: 0.90
+  trajectory_guard:
+    paired_active_ate_must_not_exceed_incumbent: true
+    ate_absolute_tolerance_m: 0.0
+    ate_relative_tolerance: 0.0
+    note: No unapproved noninferiority margin; equality passes, worsening fails.
+    rpe_p95_endpoint_still_required_for_full_acceptance: true
+  small_ate_improvement:
+    median_fraction_target: 0.05
+    is_primary_hard_gate: false
+    positive_lower_confidence_bound_required_to_claim_improvement: true
+    rationale: >-
+      Explicit provisional development target for the user's small-improvement
+      request, not tuned from these controls and not a new heldout result.
+      If unmet, omit the trajectory-improvement claim; do not hide the metric.
+
+pre_heldout_requirements:
+  - calibrate_and_lock_absolute_memory_and_total_replay_wall_budgets
+  - lock_new_population_manifest_and_hashes_without_reusing_unseen_label
+  - lock_protocol_and_all_parameters_before_running_acceptance_population
+  - prove_deployable_raw_input_correction_and_delta_handoff_equivalence
+  - integrate_and_test_runtime_budget_enforcement_and_metrics_collection
+  - assess_all_inherited_engineering_scientific_reproducibility_gates
+paper_ready: false

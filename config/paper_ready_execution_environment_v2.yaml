@@ -1,0 +1,41 @@
+environment: paper_ready_execution_environment_v2
+recorded_at: 2026-09-14T20:10:00+08:00
+amends: paper_ready_execution_environment_v1
+host:
+  operating_system: Ubuntu 20.04
+  ros_distribution: noetic
+  logical_cpus: 32
+  physical_cores: 16
+  cpu_model: 13th Gen Intel Core i9-13900HX
+  filesystem_capacity_gib: 1007
+build:
+  type: Release
+  compiler_parallel_jobs: 32
+  fast_livo_openmp_compile_threads: 4
+runtime:
+  run_trials_sequentially: true
+  playback_rate: 0.5
+  omp_num_threads: 4
+  omp_proc_bind: true
+  incumbent_cpu_set: [0, 2, 4, 6]
+  candidate_cpu_set: [8, 10, 12, 14]
+  mapper_shutdown_order: [candidate, incumbent]
+  mapper_shutdown_timeout_sec: 90
+  pcd_save_enabled: true
+  pcd_completion_marker_required_per_generation: true
+  post_pcd_process_exit: kernel_reclaim_before_temporary_pcl_destruction
+rationale: >-
+  The unpinned P2G development run exhibited catastrophic pre-fault branch
+  divergence at 0.5x. The predeclared P2H discriminator used disjoint physical
+  cores and reduced the 70-second branch difference from hundreds of metres to
+  0.402 m while reducing total peak HWM to 3.48 GiB. This resource assignment
+  is fixed before any held-out execution and is part of reproducibility, not a
+  result-dependent selector threshold.
+change_control: >-
+  Any host or CPU-set change after held-out execution starts must be recorded
+  as a new environment version. Results from different versions are reported
+  separately unless equivalence is established before examining fault metrics.
+amendment_note: >-
+  CPU, host, playback, detector, recovery and selector settings are unchanged.
+  v2 only corrects the terminal lifecycle path exposed by v1 when required map
+  persistence was enabled; qualification evidence is development-only.

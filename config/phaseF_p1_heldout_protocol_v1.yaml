@@ -1,0 +1,46 @@
+protocol: phaseF_p1_heldout_protocol_v1
+sealed_before_first_run: true
+created_at: 2026-09-16T00:00:00+08:00
+purpose: one-pass held-out generalization test of the frozen P1 onset detector
+
+immutability:
+  threshold_source: config/phaseF_p1_frozen_candidate.yaml
+  forbid_threshold_tuning_from_heldout: true
+  one_valid_result_per_cell: true
+  infrastructure_failure_policy: same-config rerun allowed; every attempt remains in append-only ledger
+  detector_mode: observe_only
+  recovery_enabled: false
+
+matrix:
+  sequences:
+    - [HILTI22, exp04_construction_upper_level_1]
+    - [HILTI22, exp07_long_corridor]
+    - [NTU_VIRAL, eee_03]
+    - [NTU_VIRAL, rtp_03]
+  conditions: [clean, range_scale_drift, rigid_ghost, mixed]
+  total_cells: 16
+  rosbag_rate: 0.5
+  required_coverage: fault_end_plus_10_sec
+
+acceptance:
+  minimum_effective_detection_rate: 0.80
+  effective_detection_classes: [in_fault, bounded_post_fault]
+  maximum_clean_candidate_commits: 0
+  maximum_median_absolute_point_onset_error_sec: 2.0
+  require_interval_confidence_and_evidence: true
+  require_duplicate_episode_merge_consistency: true
+
+reporting_only_not_acceptance:
+  - clean_false_proposal_count
+  - pre_fault_proposal_count
+  - interval_coverage_rate
+  - proposals_per_episode
+
+result:
+  evaluated_once: true
+  artifact: results/p1_heldout_20260916/p1_heldout_acceptance.json
+  complete_cells: 16
+  effective_detection_rate: 1.0
+  clean_candidate_commits: 0
+  median_absolute_point_onset_error_sec: 0.7789500000000054
+  all_gates_pass: true

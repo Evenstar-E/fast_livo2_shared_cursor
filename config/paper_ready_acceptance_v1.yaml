@@ -1,0 +1,198 @@
+protocol: paper_ready_acceptance_v1
+frozen_at: 2026-09-14T00:00:00+08:00
+status: frozen
+paper_scope: >-
+  An eight-page robotics/SLAM paper claiming resource-bounded transactional
+  recovery of historical map pollution with process-isolated fail-safe output.
+
+change_control:
+  immutable_after_first_heldout_run: true
+  outcome_dependent_changes_prohibited: true
+  amendment_rule: >-
+    A necessary correction must create a new protocol version, preserve all v1
+    results, explain the defect before rerunning, and prohibit pooled v1/v2
+    statistics.
+
+development_and_audit_only:
+  dataset: HILTI22
+  sequences:
+    - exp14_basement_2
+    - exp16_attic_to_upper_gallery_2
+    - exp18_corridor_lower_gallery_2
+  excluded_from_unseen_statistics: true
+
+heldout_manifest:
+  lock_before_first_run: true
+  required_dataset_families: 2
+  required_sequences: 4
+  sequences:
+    - dataset: HILTI22
+      sequence: exp04_construction_upper_level_1
+      nominal_duration_sec: 125
+      fault_start_sec: 50
+      fault_end_sec: 60
+    - dataset: HILTI22
+      sequence: exp07_long_corridor
+      nominal_duration_sec: 132
+      fault_start_sec: 55
+      fault_end_sec: 65
+    - dataset: NTU_VIRAL
+      sequence: eee_03
+      nominal_duration_sec: 181.4
+      fault_start_sec: 70
+      fault_end_sec: 80
+    - dataset: NTU_VIRAL
+      sequence: rtp_03
+      nominal_duration_sec: 355
+      fault_start_sec: 140
+      fault_end_sec: 155
+  selection_rationale: >-
+    Exp04 and Exp07 are short official HILTI22 sequences compatible with the
+    existing adapter. Eee_03 and rtp_03 are the smallest official sequences in
+    two distinct NTU-VIRAL environments. None has been used to tune this method.
+  required_manifest_fields:
+    - source_url
+    - archive_sha256
+    - bag_sha256
+    - bag_duration_sec
+    - topic_inventory
+    - calibration_hash
+
+fixed_faults:
+  seed: 20260909
+  modes: [range_scale_drift, rigid_ghost, mixed]
+  range_scale_start: 1.0
+  range_scale_end: 1.04
+  ghost_fraction: 0.35
+  ghost_yaw_deg: 2.0
+  ghost_translation_m: [0.20, 0.0, 0.0]
+  point_time_scale: 1.0
+
+fixed_selector:
+  playback_rate: 0.5
+  probation_duration_sec: 20.0
+  minimum_matched_samples: 50
+  minimum_post_catchup_duration_sec: 2.0
+  minimum_post_catchup_samples: 20
+  maximum_position_variance_ratio: 3.0
+  maximum_rotation_variance_ratio: 2.2
+  minimum_consecutive_uncertainty_exceedance_samples: 5
+  minimum_map_coverage_ratio: 1.0
+  minimum_map_support_ratio: 0.75
+  maximum_boundary_position_m: 1.0
+  maximum_boundary_rotation_deg: 10.0
+  maximum_position_growth_m: 1.0
+  maximum_rotation_growth_deg: 10.0
+  healthy_tail_checks:
+    residual: true
+    match_ratio: true
+    reentry_position: true
+    reentry_rotation: true
+    map_coverage: true
+    map_support: true
+    boundary_position: true
+    boundary_rotation: true
+
+heldout_matrix:
+  fault_trials_per_sequence_mode: 5
+  clean_trials_per_sequence: 5
+  fault_trials: 60
+  clean_trials: 20
+  total_trials: 80
+  execution_order: deterministic_round_robin_by_repeat_sequence_condition
+  retry_policy: >-
+    Retry only infrastructure failures declared without inspecting quality
+    metrics. Preserve the failed directory and reason. Algorithm crashes, OOM,
+    non-finite state and compute timeout are terminal method failures.
+
+engineering_hard_gates:
+  full_sequence_compute_terminal_fraction: 1.0
+  candidate_crash_count: 0
+  candidate_oom_count: 0
+  compute_inconclusive_count: 0
+  nonfinite_policy: fail_closed_with_exact_fields
+  candidate_peak_increment_over_incumbent_maximum_fraction: 0.50
+  online_claim_requires_candidate_catchup_rate_at_least: 1.0
+  canonical_strictly_increasing_fraction: 1.0
+  candidate_leakage_on_rejection_count: 0
+  incumbent_mutation_by_candidate_count: 0
+
+scientific_hard_gates:
+  clean_false_switch_count_maximum: 0
+  clean_trial_count: 20
+  fault_candidate_acceptance_fraction_minimum: 0.50
+  accepted_candidate_quality_improvement_fraction_minimum: 0.90
+  catastrophic_accepted_candidate_count_maximum: 0
+  catastrophic_ate_ratio: 2.0
+  median_ate_improvement_fraction_minimum: 0.20
+  paired_bootstrap_confidence: 0.95
+  paired_bootstrap_improvement_interval_must_exclude_zero: true
+  median_extra_pollution_reduction_fraction_minimum: 0.30
+  clean_to_candidate_coverage_loss_fraction_maximum: 0.10
+  all_rejections_require_complete_incumbent_output: true
+
+required_metrics:
+  trajectory: [ate_rmse, ate_p95, rpe_translation, rpe_rotation, endpoint_error]
+  map:
+    - candidate_to_clean_rmse
+    - candidate_to_clean_p95
+    - clean_to_candidate_rmse
+    - clean_to_candidate_p95
+    - extra_pollution_points
+    - coverage_within_10cm
+  safety:
+    - final_generation
+    - rejection_reason
+    - canonical_monotonicity
+    - candidate_leakage
+    - post_switch_dwell
+  resources:
+    - checkpoint_wall_sec
+    - dirty_voxel_count
+    - replay_wall_sec
+    - catchup_rate
+    - incumbent_peak_rss
+    - candidate_peak_rss
+
+required_baselines:
+  - clean_oracle_input
+  - original_fast_livo2_polluted
+  - polluted_incumbent_without_recovery
+  - same_process_full_snapshot_rollback
+  - shadow_isolation_without_commit_validator
+  - shadow_with_healthy_tail_only
+  - complete_proposed_method
+
+required_ablations:
+  - full_snapshot_vs_delta_before_image_journal
+  - shadow_isolation_removed
+  - onset_left_boundary_removed
+  - healthy_tail_residual_removed
+  - healthy_tail_match_removed
+  - map_summary_gates_removed
+  - outer_boundary_and_catchup_removed
+  - uncertainty_persistence_n1_vs_n5
+
+persistence_claim_gate:
+  required_exceedance_events: 20
+  n1_vs_n5_independent_trials_per_condition: 5
+  must_reduce_transient_false_rejections: true
+  must_not_increase_fault_candidate_acceptance: true
+  if_not_satisfied: remove_from_main_contributions
+
+reproducibility_hard_gates:
+  release_build_passed: true
+  all_unit_and_integration_tests_passed: true
+  configs_and_seeds_archived: true
+  source_and_bag_hashes_archived: true
+  run_directories_append_only: true
+  automatic_parameter_audit_fraction: 1.0
+  aggregate_tables_regenerated_from_raw_artifacts: true
+  eight_page_pdf_render_checked: true
+  claims_match_frozen_results: true
+
+paper_ready_expression: >-
+  engineering_hard_gates AND scientific_hard_gates AND
+  persistence_claim_gate_or_claim_removed AND reproducibility_hard_gates
+
+paper_ready: false

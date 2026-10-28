@@ -1,0 +1,64 @@
+# Oracle-first experiment for LiDAR corruption.
+# Times are seconds relative to the first LiDAR frame.
+transactional_mapping:
+  enabled: true
+  # Negative means checkpoint exactly at oracle_start_sec. Set an earlier
+  # periodic boundary to test look-back restoration.
+  checkpoint_start_sec: -1.0
+  oracle_start_sec: 30.0
+  oracle_end_sec: 36.0
+  # Detector confirmation may arrive after the fault began. The checkpoint is
+  # still armed at oracle_start_sec in this experiment-stage implementation.
+  detection_delay_sec: 0.0
+  # Four seconds leaves enough post-quarantine observations for candidate-map
+  # convergence followed by an independent healthy-tail commit check.
+  recovery_tail_sec: 4.0
+  max_buffered_events: 4000
+
+  # Allow the live map to be contaminated so rollback can be evaluated.
+  live_lidar_provisional_writes: true
+  freeze_vio_provisional: false
+
+  # Optional continuously armed history. Checkpoints are periodic and selected
+  # only after detection; the oracle interval below is currently used as the
+  # experimental onset estimate and replay label.
+  rolling_history_enabled: false
+  rolling_checkpoint_period_sec: 5.0
+  rolling_history_horizon_sec: 20.0
+  rolling_max_checkpoints: 5
+
+  # During replay, suspect measurements may constrain transient state, while
+  # their persistent LiDAR and visual-map writes remain independently blocked.
+  replay_lidar_updates_in_quarantine: true
+  replay_visual_updates_in_quarantine: true
+
+harm_detector:
+  enabled: false
+  baseline_window: 100
+  trigger_consecutive: 3
+  residual_mad_multiplier: 6.0
+  residual_increase_floor: 0.003
+  match_mad_multiplier: 6.0
+  match_drop_floor: 0.10
+  # The fixed timing guard remains a conservative fallback.  When weak evidence
+  # precedes the strong trigger, a retrospective change-point bracket can extend
+  # the lower bound earlier without reading the injector's active/oracle label.
+  onset_guard_frames: 5
+  onset_min_guard_sec: 0.5
+  onset_max_guard_sec: 2.0
+  weak_residual_fraction: 0.35
+  weak_match_fraction: 0.35
+  weak_combined_score: 0.75
+  weak_max_gap_frames: 1
+  weak_lookback_sec: 2.5
+  quarantine_duration_sec: 8.0
+
+healthy_tail_validator:
+  enabled: true
+  consecutive_healthy: 20
+  minimum_duration_sec: 1.5
+  timeout_sec: 12.0
+  residual_mad_multiplier: 3.0
+  residual_increase_floor: 0.0015
+  match_mad_multiplier: 3.0
+  match_drop_floor: 0.05

@@ -1,0 +1,2 @@
+# Preserve the exact source bytes recorded in SOURCE_MANIFEST and SHA256SUMS.
+* -text

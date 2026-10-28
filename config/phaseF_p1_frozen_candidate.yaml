@@ -1,0 +1,24 @@
+harm_detector:
+  enabled: true
+  two_timescale_enabled: true
+  reference_window_sec: 6.0
+  reference_gap_sec: 0.0
+  current_window_sec: 4.0
+  minimum_anomaly_duration_sec: 2.0
+  trigger_consecutive: 3
+  residual_mad_multiplier: 1.5
+  match_mad_multiplier: 1.5
+  innovation_mad_multiplier: 1.5
+  strong_fused_score: 0.10
+  minimum_strong_signals: 2
+  two_timescale_signal_support_score: 0.10
+  two_timescale_minimum_residual_anchor_score: 0.05
+  two_timescale_innovation_two_sided: true
+  dominant_signal_score: 3.5
+  episode_merge_gap_sec: 12.0
+
+transactional_mapping:
+  rolling_history_enabled: true
+  rolling_checkpoint_period_sec: 2.0
+  rolling_history_horizon_sec: 20.0
+  rolling_max_checkpoints: 12

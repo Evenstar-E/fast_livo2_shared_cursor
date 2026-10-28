@@ -1,0 +1,14 @@
+{
+  "source_export_zip_sha256": "42ad1fc26686bf8b3775f73a618ae7fcdc5411b5a755b9032f5e9c24702961b6",
+  "base_commit": "7f098df3fa74fac00012520f6d2108cd6405e011",
+  "publication_changes": [
+    "NOTICE.md",
+    "docs/repository_initial/LICENSE.txt",
+    "docs/repository_initial/README.md",
+    "docs/RESOURCE_USAGE.md",
+    "PUBLICATION_MANIFEST.json",
+    "SHA256SUMS",
+    ".gitattributes"
+  ],
+  "original_workspace_modified": false
+}

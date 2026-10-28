@@ -1,0 +1,24 @@
+protocol: phaseF_p0_evaluation_protocol_v1
+created_at: 2026-09-15T00:00:00+08:00
+applies_to: derived evaluation of the immutable paper_ready_acceptance_v2 population
+
+detection_classification:
+  recovery_horizon_sec_after_fault_end: 10.0
+  intervals:
+    pre_fault: "detection < fault_start"
+    in_fault: "fault_start <= detection <= fault_end"
+    bounded_post_fault: "fault_end < detection <= fault_end + 10.0"
+    late_detection: "detection > fault_end + 10.0"
+  recovery_eligible: [in_fault, bounded_post_fault]
+  rationale: >-
+    Ten seconds covers the demonstrated delayed-recovery case while remaining
+    within the configured bounded-history regime. Detections outside this
+    horizon are reported but cannot support a recovery-effectiveness claim.
+
+state_semantics:
+  rejected_candidate_public_generation: incumbent
+  rejection_recorded_separately: true
+  legacy_normalization: >-
+    A raw aborted final generation with at least one candidate_rejected event
+    and zero canonical candidate samples is reported as incumbent, while the
+    raw generation and rejection reason remain preserved.

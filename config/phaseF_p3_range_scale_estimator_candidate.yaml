@@ -1,0 +1,44 @@
+# Prospective development configuration. This is not a paper-ready frozen
+# protocol until candidate-branch bag experiments and held-out evaluation pass.
+range_scale_correction_estimator:
+  enabled: true
+  minimum_range_scale: 0.90
+  maximum_range_scale: 1.10
+  identity_range_scale: 1.00
+  identity_tolerance: 0.000001
+  candidate_terminal_scales: [0.94, 0.96, 0.98, 1.00, 1.02, 1.04, 1.06]
+  minimum_hypotheses: 3
+  minimum_samples: 20
+  minimum_onset_confidence: 0.60
+  minimum_relative_improvement: 0.10
+  minimum_runner_up_margin: 0.04
+  near_optimal_score_delta: 0.04
+  maximum_confidence_interval_width: 0.04
+  minimum_combined_confidence: 0.60
+  residual_weight: 1.0
+  match_weight: 1.0
+  innovation_weight: 1.0
+  match_error_floor: 0.02
+  ratio_cap: 10.0
+  require_identity_control: true
+  require_candidate_healthy_tail_pass: true
+  use_clean_map_for_selection: false
+  use_injected_fault_parameters: false
+  use_oracle_fault_interval: false
+
+causal_replay_plan:
+  replay_start: p1_onset_lower_bound
+  ramp_end: detection_time
+  replay_end: detection_time_plus_bounded_horizon
+  default_post_detection_horizon_sec: 8.0
+  scale_profile: linear_from_identity_to_selected_terminal_scale
+  post_detection_online_correction: bounded_hold_of_selected_terminal_scale
+  oracle_fault_end_consumed: false
+
+storage_bounded_smoke:
+  isolated_candidate_processes: true
+  sequential_execution: true
+  terminal_scales: [1.00, 1.01, 1.02, 1.03]
+  disk_backed_payload: false
+  save_point_clouds: false
+  minimum_windows_c_free_gib: 25.0

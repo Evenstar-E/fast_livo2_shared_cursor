@@ -1,0 +1,32 @@
+protocol: phaseD_uncertainty_persistence_discriminator_v1
+frozen_before_execution: true
+development_only: true
+thresholds:
+  maximum_position_variance_ratio: 3.0
+  maximum_rotation_variance_ratio: 2.2
+  persistence_values: [1, 5]
+trials:
+  independent_seeds: [202609091, 202609092, 202609093, 202609094, 202609095]
+  samples_per_trial: 100
+  sample_period_sec: 0.1
+conditions:
+  transient:
+    rotation_variance_ratio_by_trial: [2.30, 2.31, 2.32, 2.33, 2.34]
+    isolated_spike_indices_base: [10, 24, 38, 52]
+    trial_index_shift_modulo: 3
+    injected_exceedance_events_per_trial: 4
+  sustained:
+    rotation_variance_ratio_by_trial: [2.30, 2.31, 2.32, 2.33, 2.34]
+    consecutive_spike_start_index_base: 20
+    trial_index_shift_modulo: 3
+    consecutive_spike_count: 10
+acceptance:
+  aggregate_injected_exceedance_events_minimum: 20
+  n1_transient_false_rejections: 5
+  n5_transient_false_rejections: 0
+  n1_sustained_acceptances: 0
+  n5_sustained_acceptances: 0
+decision_rule: >-
+  Retain persistence as a contribution only if N=5 removes all transient false
+  rejections observed with N=1 while both N=1 and N=5 reject every sustained
+  condition. Otherwise remove the persistence claim.

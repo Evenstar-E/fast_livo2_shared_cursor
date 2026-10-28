@@ -1,0 +1,412 @@
+protocol: phaseF_p2_commit_protocol_v1
+created_at: 2026-09-16T00:00:00+08:00
+scope: development-only commit-policy calibration and dry-run validation
+status: algorithm_blocked_after_v82_clean_false_admission
+
+algorithm_blocker_v82:
+  frozen_thresholds_changed: false
+  clean_false_admission:
+    candidate_detection_sec: 57.0248
+    candidate_onset_interval_sec: [50.9249, 54.9249]
+    public_detection_sec: 56.9248
+    public_onset_interval_sec: [50.8249, 54.8249]
+    injected_fault_start_sec: 80.0
+    conclusion: >-
+      Public and candidate onset overlap is correlated rather than independent
+      evidence because both branches consume the same measurements and run the
+      same detector. It cannot qualify an expensive recovery admission.
+  exact_handoff_replay_failure:
+    checkpoint_relative_time_sec: 50.52518486976623
+    replay_gap_sec: 7.105427357601002e-15
+    replay_events: 373
+    corrected_fault_points: 0
+    raw_boundary_position_divergence_m: 1178.5874
+    raw_boundary_rotation_divergence_deg: 49.612965
+    common_reference_valid_observations: 0
+    common_reference_invalid_observations: 40
+    disposition: candidate_rejected
+  resume_requirement: >-
+    Prove deterministic replay of one immutable checkpoint/payload at least
+    three times, then replace same-detector cross-branch corroboration with an
+    independent fault likelihood before any further end-to-end threshold work.
+
+p1_detector:
+  source: config/phaseF_p1_frozen_candidate.yaml
+  thresholds_changed: false
+  heldout_results_may_be_used_for_p2_tuning: false
+
+proposal_scheduler:
+  enabled: true
+  maximum_expensive_recovery_attempts_per_merged_episode: 1
+  raw_proposal_event: recovery_proposal_observed
+  actionable_proposal_event: recovery_proposed
+  suppressed_event: recovery_proposal_suppressed
+  invariant: every raw detector proposal remains auditable
+  cost_metric: (raw_detector_proposals-replay_started)/raw_detector_proposals
+  clean_metric_semantics: raw clean alerts are unchanged; only actionable expensive recovery work is reduced
+
+rolling_recovery_history:
+  checkpoint_period_sec: 2.0
+  history_horizon_sec: 20.0
+  maximum_checkpoints: 12
+  delta_journal_maximum_checkpoints: 4
+  preserve_horizon_anchor: false
+  rationale: >-
+    Rejection rebuild reconstructs a contiguous rolling grid instead of
+    reseeding only the selected historical anchor. P2 retains the frozen 2 s
+    checkpoint period and four delta checkpoints, covering 8 s: enough for
+    the measured 4.1 s detection delay plus the 2 s confidence-bound
+    extension, with 1.9 s margin. This preserves every frozen P1
+    detector/history value while bounding replay storage.
+
+replay_payload_storage:
+  disk_backed: true
+  payloads: processed_lidar_clouds_and_images
+  in_memory_metadata: timing_imu_handles_and_journal_offsets
+  integrity: per_record_checksum
+  rationale: >-
+    The immutable 20 s rolling event history otherwise retains duplicate
+    point clouds and images beside the live estimator. Payload bytes are
+    spilled to the run-local journal and materialized only for replay; event
+    timing, IMU handles, and checkpoint semantics remain unchanged.
+
+weak_evidence_recovery_boundary:
+  enabled_for_p2_only: true
+  maximum_normalized_signal_score: 1.0
+  point_estimate_changed: false
+  conservative_left_support: >-
+    reference_window + reference_gap + current_window + minimum anomaly
+    duration. Only the recovery-side confidence boundary is widened when all
+    normalized signal scores are below 1.0. The frozen P1 detector defaults
+    remain disabled and unchanged.
+
+rejection_rearm_continuity:
+  detector_history_replayed_during_incumbent_rebuild: true
+  rejected_historical_triggers_consumed: true
+  selected_verified_anchor_reseeded: true
+  raw_event_history_reseeded: true
+  rationale: >-
+    v15 showed a false recovery occupying sensor time 69.7--81.8 s and
+    masking the real 80 s fault. Rebuilding only estimator state left both a
+    detector-history gap and no pre-fault rollback anchor. Re-arm therefore
+    reconstructs the detector on the identical raw journal and starts fresh
+    delta journals at the selected verified state before incumbent replay.
+
+quarantine_map_reconstruction:
+  corrupted_lidar_state_updates_enabled: true
+  corrupted_lidar_relative_information_weight: 0.1
+  uncorrupted_visual_state_updates_enabled: true
+  persistent_voxel_writes_enabled: false
+  recovered_pcd_inlier_writes_enabled: false
+  selection: none_inside_quarantine
+  recovered_pcd_policy: persist_only_post_quarantine_evidence
+  full_faulted_scan_persistence: prohibited
+  rationale: >-
+    Completely disabling LiDAR for every proposal made natural false-positive
+    replays diverge by tens of metres and exhausted memory during rejection
+    rebuilds. Quarantine therefore keeps map-consistent LiDAR tracking but
+    inflates its measurement noise to apply 0.1 relative information, retains
+    selective residual gating, and still prohibits persistent voxel and PCD
+    writes. Residual-consistent fault-window points remain useful for state
+    estimation but are not clean-map evidence: v40/v50 showed that persisting
+    them can improve a short trajectory segment while worsening bidirectional
+    map pollution. They are retained only as an opt-in diagnostic ablation.
+    Uncorrupted visual updates and IMU propagation remain active. This changes
+    the recovery algorithm only; all frozen detector and commit thresholds
+    remain unchanged.
+
+validation_tail_map_reconstruction:
+  persistent_writes_enabled: true
+  selective_state_update_gate_enabled: false
+  selective_map_write_gate_enabled: false
+  rationale: >-
+    The v52 ablation showed that applying the residual gate to the healthy-tail
+    state update destroys healthy re-entry support (0/41 residual and match
+    passes). The v53 map-write-only ablation avoided that state failure, but it
+    retained only 27.5% map support, failed the healthy-tail validator, worsened
+    ATE from 0.412 m to 1.096 m, and increased points over 10 cm from 410432 to
+    493927. Healthy-tail state updates and persistent writes therefore remain
+    unrestricted. Selective tail gating is retained only as an explicit failed
+    ablation and changes neither the frozen onset detector nor any commit
+    threshold.
+
+failed_recovery_ablations:
+  validation_tail_selective_state_gate:
+    run: v52
+    disposition: disabled
+    reason: zero_of_41_residual_and_match_passes
+  validation_tail_selective_map_write_gate:
+    run: v53
+    disposition: disabled
+    reason: map_support_0.2746_and_all_external_recovery_gates_failed
+  uniform_fault_lidar_weight_0_01:
+    run: v54
+    disposition: diagnostic_only
+    reason: >-
+      The true-fault candidate was internally eligible, but external probation
+      failed and ATE/RPE/map pollution all worsened. Natural false-positive
+      candidates also diverged by as much as 80.3 m. A lower information weight
+      may only be revisited behind a fault-type/severity-conditioned policy.
+  clean_default_quarantine_policy:
+    run: v59
+    disposition: prohibited_as_unconditional_policy
+    reason: >-
+      A forced clean replay with 0.1 LiDAR weight and no quarantine map writes
+      produced 41.31 m ATE and 126.37 m endpoint error. The same clean replay
+      with nominal weight and writes remained accurate in v58b. A measurement
+      that has been corrected or positively validated must regain nominal
+      information and map-write privileges.
+
+diagnostic_range_scale_oracle:
+  default_enabled: false
+  paper_acceptance_eligible: false
+  source_scan_provenance:
+    inverse_scale_encoded_per_source_scan: true
+    survives_livo_event_aggregation: true
+    survives_disk_backed_payload_journal: true
+    missing_provenance_policy: reported_not_silently_approximated
+  v60_result:
+    tagged_replay_points: 8318298
+    corrected_fault_window_points: 4116516
+    missing_provenance_lio_events: 0
+    official_ate_rmse_m:
+      polluted: 0.4119218300601199
+      recovered: 0.31289958444250704
+    official_rpe_translation_rmse_m:
+      polluted: 0.04698867510380705
+      recovered: 0.03801558559469658
+    map_points_over_10cm:
+      polluted: 410432
+      recovered: 428025
+    disposition: trajectory_upper_bound_pass_map_upper_bound_fail
+  rationale: >-
+    LIVO events aggregate several source scans, so an event-timestamp inverse
+    is not the inverse of a scan-header-based injected fault. v60 carries the
+    exact source-scan factor with each point. The resulting ATE/RPE improvement
+    establishes that explicit degradation inversion is viable, but its map
+    failure and 1.027 m public-incumbent boundary show that exact branch
+    handoff and map-frame continuity remain mandatory.
+  state_only_map_suppression_ablation:
+    run: v61
+    disposition: rejected
+    official_ate_rmse_m: 0.5229999426485342
+    official_rpe_translation_rmse_m: 0.05679959277208928
+    map_points_over_10cm: 500439
+    coverage_loss_fraction: 0.16958710500000002
+    rationale: >-
+      Applying the exact inverse to state updates while withholding all
+      fault-window map writes passed the short internal gate but worsened
+      trajectory, pollution, coverage, and memory. Corrected geometry must not
+      be discarded unconditionally; further write-policy tuning is blocked
+      until candidate derivation uses an exact public-incumbent handoff.
+
+sequential_probation_pairing:
+  evaluator_protocol: phaseF_p2_sequential_triplet_v2
+  candidate_reference: public_incumbent_from_same_shadow_execution
+  prohibited_reference: separately_executed_polluted_baseline
+  thresholds_changed: false
+  rationale: >-
+    A separately executed branch contains run-to-run estimator variation and
+    cannot support a causal commit-boundary continuity decision. It remains a
+    valid aggregate polluted baseline for ATE, RPE, and map improvement only.
+
+healthy_tail_sequential_evidence:
+  enabled: true
+  minimum_observations: 20
+  minimum_duration_sec: 1.5
+  timeout_sec: 12.0
+  confidence_bound: one-sided Wilson score lower bound
+  confidence_z: 1.645
+  minimum_residual_pass_rate_lower_bound: 0.45
+  minimum_match_pass_rate_lower_bound: 0.40
+  minimum_joint_pass_rate_lower_bound: 0.40
+  calibration_source: >-
+    Phase-C Exp16 corrected-v2.1/v2.4 development trials only. The lowest
+    successful mixed-fault tail had 25/41 residual passes and 22/41 joint
+    passes, corresponding to Wilson lower bounds 0.481392 and 0.410220.
+  calibration_margin:
+    residual_lower_bound: 0.031392
+    joint_lower_bound: 0.010220
+
+paired_recovery_benefit:
+  enabled: true
+  comparison: candidate_vs_incumbent_on_identical_healthy_tail_events
+  common_reference_map:
+    enabled_for_p2_development: true
+    default_enabled: false
+    semantics: >-
+      Freeze the verified checkpoint map before replay and evaluate the
+      incumbent and candidate state for each identical healthy-tail scan
+      against that same immutable map. Native branch-local residuals remain
+      the input to the frozen absolute healthy-tail gates. This P2-only path
+      prevents persistent-map scale differences from masquerading as recovery
+      benefit and leaves the frozen P1 default behavior unchanged.
+  minimum_observations: 20
+  confidence_z: 1.645
+  residual_relative_improvement: 0.05
+  match_absolute_improvement: 0.02
+  innovation_relative_improvement: 0.30
+  innovation_calibration: >-
+    The 0.30 development threshold exceeds the 0.168 aggregate innovation
+    gain observed in the clean Exp14 false-eligibility counterexample. It is
+    not frozen until a clean re-run confirms zero eligibility.
+  minimum_improved_fraction_lower_bound: 0.40
+  commit_requirement: >-
+    At least one aggregate residual/match/innovation benefit and a Wilson lower bound on
+    the per-event improved fraction above 0.40. This rejects healthy but
+    equivalent clean replays without using ground truth.
+  invalid_observation_policy: >-
+    Non-finite or out-of-range healthy-tail statistics are logged and skipped;
+    they never count as healthy or improved evidence. All frozen minimum valid
+    observation and confidence requirements remain in force.
+  safe_early_rejection: >-
+    Stop replay only after a conservative upper-bound calculation proves that
+    the frozen paired-benefit requirements cannot be reached even if every
+    remaining valid paired observation were maximally favorable.
+  absolute_health_dominance: >-
+    A candidate may also satisfy the benefit requirement when it passes the
+    frozen absolute healthy-tail evidence while the incumbent fails those same
+    thresholds on the identical event timestamps. This avoids comparing raw
+    residuals from different persistent maps as if they shared a scale. Safe
+    paired-benefit early rejection is disabled when this alternative is active.
+  compute_metric: >-
+    (planned_replay_events-processed_replay_events)/planned_replay_events
+
+recovery_proposal_budget:
+  maximum_attempts_per_episode: 1
+  maximum_attempts_per_sequence: 4
+  maximum_completed_rejection_refunds_per_sequence: 4
+  maximum_physical_replays_per_sequence: 8
+  minimum_signal_escalation_ratio: 1.4
+  rejected_history_residual_signal: same_sequence_raw_mean_absolute_residual
+  rationale: >-
+    Each development sequence contains one injected fault. The total budget
+    permits a bounded retry inside a merged episode only when residual,
+    matching, or innovation evidence rises at least 1.4x above the strongest
+    previously attempted value for that signal. Across rejected episodes the
+    residual channel uses raw mean absolute residual because detector-normalized
+    scores are recomputed after baseline relearning and are not comparable;
+    within an episode the frozen normalized scores remain unchanged. This
+    prevents a weak natural
+    precursor from masking the injected fault while the total budget suppresses
+    later repeats that cannot add independent single-fault evidence. The four
+    slots originally matched the expected D06 ordering, but v35 observed four
+    pre-fault investigations before the injected fault. A completed validator
+    rejection may therefore refund its admission credit, capped at four
+    refunds. The independent four-credit budget then bounds physical replay
+    work to eight attempts while preserving a slot for the later fault.
+    No-anchor deferrals are refunded and cannot consume a slot. Default
+    runtime values disable escalation and keep the total budget unlimited, so
+    this P2 compute guard does not alter frozen P1 behavior.
+  rolling_delta_checkpoint_limit: 4
+  rolling_delta_checkpoint_period_sec: 2
+  rolling_delta_coverage_sec: 8
+  rolling_delta_coverage_basis: >-
+    Four two-second anchors cover the measured 4.1-second detection delay plus
+    the two-second onset confidence left extension, with an additional
+    1.9-second margin. Both the storage period and detector onset accuracy
+    retain the frozen two-second value.
+  no_anchor_budget_policy: >-
+    Atomically refund the just-approved episode and total attempt when no
+    checkpoint precedes the conservative onset bound. No candidate generation
+    or replay was started, so charging that attempt would let an infrastructure
+    limitation mask a later recoverable fault.
+  completed_rejection_budget_policy: >-
+    After the incumbent has been reconstructed successfully, atomically refund
+    the rejected replay's episode and total admission credit. At most four
+    completed rejections are refundable; later rejections consume the normal
+    four-credit sequence budget. This prevents natural precursors from masking
+    a later fault without creating an unbounded clean-sequence replay loop.
+  diagnostic_admission_floor:
+    default_enabled: false
+    range_scale_development_ablation_residual_score: 4.0
+    scope: exp16 range-scale diagnostic only
+    rationale: >-
+      v36 showed that four rejected replays and non-bitwise incumbent rebuilds
+      contaminate the candidate before the real fault. In the exp16
+      development pair, clean residual proposal scores peaked at 3.09683 while
+      the injected range-scale fault reached 4.40061. This optional scheduler
+      floor tests a single-replay candidate from an unreconstructed baseline;
+      it is not a frozen multi-fault policy and does not modify P1 detections.
+  diagnostic_boundary_reanchor:
+    default_enabled: false
+    validation_tail_persistent_map_writes: false
+    pose_reanchor_at_commit: incumbent_state_at_identical_replay_boundary
+    map_frame_transform: prohibited
+    rationale: >-
+      v40 reduced ATE but retained 0.468 m / 3.77 deg boundary mismatch and
+      wrote validation-tail scans before the candidate frame was made
+      continuous. This ablation keeps the verified checkpoint map fixed,
+      withholds all replay writes through validation, applies only the
+      boundary SE(3) gauge correction to pose, velocity, gravity and their
+      global covariance blocks, then resumes live writes after commit.
+  targeted_validation_pcd_policy: >-
+    The legacy in-memory PCD accumulator is disabled. When PCD evidence is
+    requested, each branch exports a deterministic compact surfel cloud from
+    its final voxel/octree at shutdown, capped at 750000 points with at most
+    nine samples per terminal plane. Memory therefore scales with the live map
+    and the explicit cap rather than sequence duration. Runs that disable both
+    legacy PCD and bounded voxel export remain ineligible for map acceptance.
+
+candidate_summary:
+  required: true
+  minimum_map_coverage_ratio: 0.90
+  map_coverage_semantics: verified_checkpoint_voxel_key_retention
+  map_coverage_denominator: voxel_keys_present_immediately_after_anchor_restore
+  map_coverage_numerator: restored_anchor_keys_still_present_after_replay
+  map_coverage_rationale: >-
+    The pre-replay branch includes suspect-interval additions, so requiring
+    their retention contradicts decontamination. Online validation protects
+    verified anchor geometry; the frozen offline bidirectional distance gate
+    measures end-to-end spatial coverage against the clean reference map.
+  minimum_map_support_ratio: 0.75
+  maximum_reentry_position_correction_m: 0.50
+  maximum_reentry_rotation_correction_deg: 5.0
+  maximum_boundary_position_divergence_m: 1.0
+  maximum_boundary_rotation_divergence_deg: 5.0
+
+decision_stages:
+  - replay_completed
+  - candidate_local_health_decision
+  - candidate_map_decision
+  - candidate_commit_decision
+  - candidate_commit_dry_run_eligible
+
+dry_run:
+  enabled: true
+  process_isolation_required: true
+  public_generation_switch_allowed: false
+  private_candidate_continues_after_eligibility: true
+  rationale: preserve a full-length candidate map for ATE and pollution evaluation
+
+development_matrix:
+  sequences: [exp14_basement_2, exp16_attic_to_upper_gallery_2, exp18_corridor_lower_gallery_2]
+  fault_modes: [range_scale_drift, rigid_ghost, mixed]
+  clean_reference_runs_per_sequence: 1
+  fault_runs: 9
+  total_runs: 12
+
+trajectory_evaluation:
+  primary_reference: official_hilti22_dense_6dof_ground_truth
+  maximum_ground_truth_interpolation_gap_sec: 0.20
+  alignment: rigid_se3_no_scale
+  rpe_delta_sec: 1.0
+  gate_metric: translation_ate_rmse
+  clean_reference_post_fault_error: diagnostic_only
+
+map_evaluation:
+  primary_alignment: prohibited
+  metric: bidirectional_nearest_neighbor
+  distance_threshold_m: 0.10
+  pollution: candidate_to_clean_points_over_threshold
+  coverage: clean_to_candidate_fraction_within_threshold
+
+exit_gates:
+  minimum_fault_commit_eligible_rate: 0.60
+  minimum_eligible_ate_and_pollution_improvement_rate: 0.90
+  minimum_median_pollution_reduction_fraction: 0.30
+  maximum_coverage_loss_fraction: 0.10
+  maximum_clean_public_switches: 0
+  require_stage_complete_evidence: true
+  require_no_candidate_output_leakage: true
+  require_proposal_scheduler_accounting_invariants: true

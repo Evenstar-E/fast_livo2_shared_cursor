@@ -1,0 +1,257 @@
+protocol: stage7g_uncertainty_persistence_v2
+date: 2026-09-13
+status: cross_sequence_transfer_complete
+
+motivation:
+  frozen_v1_result: exp18_candidate_8_of_10
+  frozen_v1_failures:
+    - rotation_ratio_2.60334_above_2.2
+    - rotation_ratio_2.26996_above_2.2
+  open_diagnostic_observation: >-
+    Three instrumented runs had mean rotation ratios 0.921--0.956 but maxima
+    1.430--1.970, motivating a persistence test without altering the v1 record.
+
+candidate_confirmation:
+  maximum_position_variance_ratio: 3.0
+  maximum_rotation_variance_ratio: 2.2
+  minimum_consecutive_uncertainty_exceedance_samples: 5
+  expected_sample_rate_hz: 10.0
+  nominal_persistence_duration_sec: 0.5
+  minimum_map_coverage_ratio: 1.0
+  minimum_map_support_ratio: 0.75
+  maximum_boundary_position_m: 1.0
+  maximum_boundary_rotation_deg: 10.0
+  probation_duration_sec: 20.0
+  minimum_post_catchup_duration_sec: 2.0
+  minimum_post_catchup_samples: 20
+
+rules:
+  - An exceedance is candidate variance trace divided by matched incumbent
+    variance trace strictly above its frozen v1 limit.
+  - A healthy matched sample resets that modality's consecutive counter.
+  - Position and rotation counters are independent; either reaching five aborts.
+  - All other v1 acceptance limits remain unchanged.
+  - The first three v2 runs are open development diagnostics only.
+  - After inspecting those three runs, freeze exactly one v2 policy before any
+    independent confirmation or held-out sequence is evaluated.
+  - Never pool v1 and v2 trials or relabel the v1 failures as v2 successes.
+
+planned_matrix:
+  open_development:
+    sequence: exp18_corridor_lower_gallery_2
+    trials: 3
+  independent_confirmation:
+    sequence: exp18_corridor_lower_gallery_2
+    trials: 10
+  cross_sequence_transfer:
+    sequences: [exp14_basement_2, exp16_attic_to_upper_gallery_2]
+    fault_modes: [range_scale_drift, rigid_ghost, mixed]
+    trials_per_cell: 3
+    playback_rate: 0.5
+    sequence_exposure_note: >-
+      Exp14 and Exp16 were inspected during v1 development. These are frozen-v2
+      cross-sequence transfer tests, not strictly unseen held-out sequences.
+    playback_rate_rationale: >-
+      The previously observed Exp16 1.0x run was compute-inconclusive. A uniform
+      0.5x rate is fixed before this matrix so both branches receive sufficient
+      wall-clock budget; the rate may not vary by outcome or cell.
+
+open_development_result:
+  trials: 3
+  candidate_decisions: 3
+  strict_canonical_trials: 3
+  position_exceedance_samples: [0, 0, 0]
+  rotation_exceedance_samples: [0, 0, 0]
+  maximum_position_variance_ratios: [2.42036, 1.47590, 1.46168]
+  maximum_rotation_variance_ratios: [1.48973, 1.40658, 1.40156]
+  interpretation: >-
+    These runs validate the counter plumbing and show no regression, but do not
+    discriminate N=5 from the legacy N=1 policy because no limit was exceeded.
+
+freeze_decision:
+  minimum_consecutive_uncertainty_exceedance_samples: 5
+  rationale: >-
+    Preserve the value declared before open development. No threshold or other
+    acceptance setting was changed after observing the three runs.
+  pooling_prohibited: true
+
+independent_confirmation_result:
+  trials: 10
+  candidate_decisions: 9
+  aborted_decisions: 1
+  strict_canonical_trials: 10
+  parameter_audit_passed_trials: 10
+  position_exceedance_samples: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  rotation_exceedance_samples: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  maximum_position_variance_ratio_range: [1.11975, 2.60602]
+  maximum_rotation_variance_ratio_range: [1.34074, 2.18263]
+  failure:
+    trial: 10
+    reason: terminal_only_handover
+    final_candidate_lag_sec: 0.0249984
+    post_catchup_samples: 1
+    required_post_catchup_samples: 20
+    post_catchup_elapsed_sec: 0.0
+    required_post_catchup_elapsed_sec: 2.0
+  interpretation: >-
+    The frozen v2 policy selected 9/10 candidates and protected all canonical
+    streams. However, no confirmation trial exceeded either uncertainty limit,
+    so the data do not exercise the persistence mechanism and cannot attribute
+    the numerical improvement over v1 to N=5. Held-out evaluation remains
+    mandatory and paper_ready remains false.
+
+cross_sequence_transfer_result:
+  trials: 18
+  candidate_decisions: 2
+  aborted_decisions: 14
+  incumbent_active_decisions: 2
+  strict_canonical_trials: 18
+  parameter_audit_passed_trials: 18
+  candidate_decisions_by_sequence: {exp14: 1, exp16: 1}
+  candidate_decisions_by_cell:
+    exp14_range_scale_drift: 0
+    exp14_rigid_ghost: 1
+    exp14_mixed: 0
+    exp16_range_scale_drift: 0
+    exp16_rigid_ghost: 0
+    exp16_mixed: 1
+  rejection_reasons:
+    candidate_rejected: 8
+    boundary_position_limit: 6
+    incumbent_active: 2
+  position_uncertainty_exceedance_samples_total: 0
+  rotation_uncertainty_exceedance_samples_total: 0
+  maximum_consecutive_position_uncertainty_exceedances: 0
+  maximum_consecutive_rotation_uncertainty_exceedances: 0
+  interpretation: >-
+    Frozen-v2 transfer selected only 2/18 candidates while all 18 canonical
+    streams remained strictly increasing. No uncertainty threshold was exceeded,
+    so the N=5 persistence mechanism was not exercised in this matrix either.
+    Exp14 failures are dominated by mapper healthy-tail rejection, whereas six
+    Exp16 runs pass the internal validator but fail the outer boundary check and
+    two Exp16 runs never complete the candidate. This is protected fallback and
+    a negative generalization result, not evidence of reliable recovery.
+
+posthoc_boundary_alignment_audit:
+  status: six_exp16_boundary_decisions_invalidated
+  affected_trials: 6
+  affected_reason: boundary_position_limit
+  first_outer_minus_commit_sec_range: [-0.2058275, -0.1058338]
+  diagnosis: outer_boundary_consumed_precommit_replay_pose
+  correction: >-
+    The raw 2/18 decision count is preserved as an audit record but is not a
+    valid acceptance-rate estimate. Candidate lifecycle status overtook buffered
+    replay odometry, causing the outer validator to consume a pose before the
+    mapper's commit watermark. Exactly six affected Exp16 trials require a
+    corrected-v2.1 rerun after the compute blocker is resolved. No scientific
+    threshold may change for those reruns.
+  fixed_live_regression:
+    sequence: exp18_corridor_lower_gallery_2
+    candidate_selected: true
+    strict_canonical: true
+    canonical_messages: 1087
+    candidate_owned_messages: 349
+    first_evaluated_candidate_minus_commit_sec: 0.0999937
+    first_evaluated_match_dt_sec: 0.0
+    boundary_position_m: 0.268293
+    boundary_rotation_deg: 1.13855
+
+p1_healthy_tail_decomposition:
+  status: complete_open_ablation
+  frozen_default_unchanged: true
+  all_default_checks_enabled: true
+  sequence: exp14_basement_2
+  fault_mode: rigid_ghost
+  playback_rate: 0.5
+  trials:
+    - variant: all_checks
+      decision: aborted
+      failed_checks: [healthy_tail_sequence]
+      residual_pass_samples: 31
+      match_pass_samples: 37
+      observations: 41
+      longest_consecutive: 8
+      longest_duration_sec: 0.699924
+      map_support_ratio: 0.951883
+      candidate_summary_healthy: true
+    - variant: match_check_disabled
+      decision: aborted
+      failed_checks: [healthy_tail_sequence]
+      residual_pass_samples: 25
+      match_pass_samples: 39
+      observations: 41
+      longest_consecutive: 14
+      longest_duration_sec: 1.299861
+      map_support_ratio: 0.954626
+      candidate_summary_healthy: true
+    - variant: residual_check_disabled
+      decision: candidate
+      failed_checks: []
+      residual_pass_samples: 29
+      match_pass_samples: 39
+      observations: 41
+      longest_consecutive: 20
+      longest_duration_sec: 1.899796
+      map_support_ratio: 0.953427
+      candidate_summary_healthy: true
+      candidate_owned_canonical_messages: 112
+  interpretation: >-
+    Aggregate map support is not the failed component. Residual continuity is
+    the dominant blocker in this open rigid-ghost ablation; disabling match
+    alone does not rescue the candidate, while disabling residual does. The
+    residual-off result is a negative safety ablation and does not authorize a
+    default-policy change or pooling with frozen trials.
+
+p2_exp16_replay_performance:
+  status: complete_open_diagnostic
+  frozen_default_unchanged: true
+  sequence: exp16_attic_to_upper_gallery_2
+  fault_mode: rigid_ghost
+  playback_rate: 0.25
+  checkpoint_sec: 80.0
+  replay_boundary_sec: 94.0
+  replay_events: 281
+  event_sensor_span_sec: 13.999135
+  variants:
+    - restore_mode: clone_before_delete
+      checkpoint_voxels: 853216
+      checkpoint_total_wall_sec: 2.590462
+      event_clone_total_wall_sec: 0.183788
+      replay_completed_events: 0
+      candidate_peak_rss_kib: 10088720
+      outcome: os_termination_before_first_replay_progress
+    - restore_mode: delete_before_clone
+      checkpoint_voxels: 945844
+      checkpoint_total_wall_sec: 2.224894
+      replay_completed_events: 200
+      replay_voxel_restore_wall_sec: 32.805269
+      replay_total_wall_sec: 48.189555
+      replay_events_per_wall_sec_at_200: 13.628241
+      candidate_peak_rss_kib: 9609212
+      outcome: fail_closed_invalid_healthy_tail_observation
+    - restore_mode: shadow_ownership_transfer
+      checkpoint_voxels: 1053033
+      checkpoint_total_wall_sec: 2.703452
+      replay_completed_events: 200
+      replay_voxel_restore_wall_sec: 6.201674
+      replay_total_wall_sec: 13.503783
+      replay_events_per_wall_sec_at_200: 58.493373
+      candidate_peak_rss_kib: 9717320
+      outcome: fail_closed_invalid_healthy_tail_observation
+  ownership_transfer_improvement:
+    restore_speedup: 5.2897
+    restore_wall_time_reduction_percent: 81.10
+    failure_path_total_speedup: 3.5686
+    failure_path_total_wall_time_reduction_percent: 71.98
+    replay_rate_speedup_at_200: 4.2921
+  interpretation: >-
+    Geometry restoration, not checkpoint latency or event cloning, caused the
+    unfinished Exp16 candidate. Shadow-only ownership transfer removes the
+    redundant restore clone and makes replay executable, but retained peak RSS
+    remains about 9.27 GiB because the full live map and full verified snapshot
+    coexist after checkpoint creation. The next scalable implementation is a
+    first-write before-image journal or persistent copy-on-write voxel map.
+    Exp16 still rejects safely on a non-finite healthy-tail observation, so P2
+    is a compute recovery result rather than a recovery-accuracy acceptance.
+
+paper_ready: false
